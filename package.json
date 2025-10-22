@@ -1,0 +1,20 @@
+{
+  "name": "ig-career-coach-api",
+  "version": "1.0.0",
+  "description": "Serverless API for IG Career Coach chatbot",
+  "main": "index.js",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build step needed for functions-only site'"
+  },
+  "keywords": ["netlify", "functions", "anthropic", "chatbot"],
+  "author": "The Interview Guys",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@supabase/supabase-js": "^2.39.7"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.11.1"
+  }
+}
