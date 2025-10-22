@@ -5,16 +5,34 @@
   "main": "index.js",
   "scripts": {
     "dev": "netlify dev",
-    "build": "echo 'No build step needed for functions-only site'"
+    "build": "echo 'No build step needed for functions-only site'",
+    "rag:chunk": "node scripts/chunk-knowledge.js",
+    "rag:embed": "node scripts/generate-embeddings.js",
+    "rag:test": "node scripts/test-rag.js"
   },
-  "keywords": ["netlify", "functions", "anthropic", "chatbot"],
+  "keywords": [
+    "netlify",
+    "functions",
+    "anthropic",
+    "chatbot"
+  ],
   "author": "The Interview Guys",
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
-    "@supabase/supabase-js": "^2.39.7"
+    "@supabase/supabase-js": "^2.76.1",
+    "dotenv": "^17.2.3",
+    "openai": "^6.6.0"
   },
   "devDependencies": {
     "netlify-cli": "^17.11.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theignetwork/ig-career-coach.git"
+  },
+  "bugs": {
+    "url": "https://github.com/theignetwork/ig-career-coach/issues"
+  },
+  "homepage": "https://github.com/theignetwork/ig-career-coach#readme"
 }

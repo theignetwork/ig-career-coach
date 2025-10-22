@@ -1,8 +1,9 @@
 // netlify/functions/chat.js
-// Main chat endpoint for IG Career Coach
+// Main chat endpoint for IG Career Coach with RAG enhancement
 
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
+const { RAGRetriever } = require('./lib/rag');
 
 // Initialize clients
 const anthropic = new Anthropic({
@@ -14,8 +15,30 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+// Initialize RAG retriever
+let ragRetriever = null;
+try {
+  ragRetriever = new RAGRetriever(
+    process.env.OPENAI_API_KEY,
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY
+  );
+} catch (error) {
+  console.error('Failed to initialize RAG retriever:', error);
+}
+
+// Map context to tool names for RAG filtering
+const CONTEXT_TO_TOOL_MAP = {
+  'resume-analyzer-pro': 'resume-analyzer',
+  'cover-letter-generator-pro': 'cover-letter',
+  'interview-oracle-pro': 'interview-oracle',
+  'ig-interview-coach': 'interview-coach',
+  'hidden-job-boards-tool': 'job-boards',
+  'ig-insider-briefs': 'insider-briefs'
+};
+
 // System prompt with context awareness
-function getSystemPrompt(context) {
+function getSystemPrompt(context, ragContext = '') {
   const basePrompt = `You are IG Career Coach, an expert AI assistant for The Interview Guys Network members.
 
 Your role is to provide actionable career advice, job search strategies, resume help, interview preparation, and general career guidance.
@@ -58,6 +81,17 @@ Format links like: [Article Title](https://blog.theinterviewguys.com/article-url
 - Under 300 words when possible
 - Focused on what the member asked
 - Action-oriented with clear next steps`;
+
+  // Add RAG context if available
+  let fullPrompt = basePrompt;
+  if (ragContext) {
+    fullPrompt += `\n\n${ragContext}`;
+    fullPrompt += '\n\n**Guidelines for using context:**';
+    fullPrompt += '\n- Use the context above to provide specific, helpful guidance';
+    fullPrompt += '\n- Reference tool features naturally when relevant';
+    fullPrompt += '\n- If context doesn\'t have the answer, acknowledge what you don\'t know and provide general best practices';
+    fullPrompt += '\n- Be encouraging and actionable';
+  }
 
   // Add context-specific instructions
   const contextPrompts = {
@@ -124,7 +158,7 @@ The member is on the IG Insider Briefs page. Prioritize:
 - Still be ready to help with other career questions`,
   };
 
-  return basePrompt + (contextPrompts[context] || '');
+  return fullPrompt + (contextPrompts[context] || '');
 }
 
 /**
@@ -214,13 +248,53 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const { message, sessionId, context: toolContext } = JSON.parse(event.body);
+    const { message, sessionId, context: toolContext, userId } = JSON.parse(event.body);
 
     if (!message) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: 'Message is required' })
       };
+    }
+
+    // Initialize RAG-related variables
+    let ragResults = null;
+    let ragContext = '';
+    let citations = [];
+    let retrievedChunks = 0;
+
+    // Retrieve RAG context if available
+    if (ragRetriever) {
+      try {
+        console.log('Retrieving RAG context for query:', message);
+
+        // Map toolContext to tool name
+        const toolFilter = toolContext ? CONTEXT_TO_TOOL_MAP[toolContext] : null;
+
+        // Retrieve knowledge base and user context
+        ragResults = await ragRetriever.retrieve(message, {
+          tool: toolFilter,
+          userId: userId || null,
+          matchThreshold: 0.75,
+          matchCount: 5
+        });
+
+        // Format context for Claude
+        ragContext = ragRetriever.formatContext(ragResults);
+
+        // Generate citations
+        citations = ragRetriever.generateCitations(ragResults);
+
+        retrievedChunks = ragResults.totalResults;
+
+        console.log(`Retrieved ${retrievedChunks} chunks from knowledge base`);
+      } catch (ragError) {
+        // Gracefully degrade if RAG fails
+        console.error('RAG retrieval failed, continuing without context:', ragError);
+        ragContext = '';
+        citations = [];
+        retrievedChunks = 0;
+      }
     }
 
     // Search for relevant blog articles
@@ -246,7 +320,7 @@ exports.handler = async (event, context) => {
       const { data: newConv, error: createError } = await supabase
         .from('conversations')
         .insert({
-          user_id: 'anonymous', // For V1, using anonymous. In V2, get from auth
+          user_id: userId || 'anonymous',
           context: toolContext || null
         })
         .select()
@@ -278,11 +352,14 @@ exports.handler = async (event, context) => {
       }
     ];
 
+    // Build system prompt with RAG context
+    const systemPrompt = getSystemPrompt(toolContext, ragContext) + formatArticlesForContext(relevantArticles);
+
     // Call Anthropic API
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
-      system: getSystemPrompt(toolContext) + formatArticlesForContext(relevantArticles),
+      system: systemPrompt,
       messages: claudeMessages
     });
 
@@ -298,7 +375,9 @@ exports.handler = async (event, context) => {
         context: toolContext || null,
         metadata: {
           model: 'claude-sonnet-4-20250514',
-          usage: response.usage
+          usage: response.usage,
+          rag_chunks_used: retrievedChunks,
+          citations: citations
         }
       });
 
@@ -308,7 +387,7 @@ exports.handler = async (event, context) => {
       .update({ updated_at: new Date().toISOString() })
       .eq('id', conversationId);
 
-    // Return response
+    // Return response with RAG metadata
     return {
       statusCode: 200,
       headers: {
@@ -321,7 +400,9 @@ exports.handler = async (event, context) => {
         message: assistantMessage,
         sessionId: conversationId,
         timestamp: new Date().toISOString(),
-        relatedArticles: relevantArticles // Include articles in response
+        relatedArticles: relevantArticles,
+        citations: citations, // RAG sources used
+        retrievedChunks: retrievedChunks // Number of knowledge chunks retrieved
       })
     };
 
