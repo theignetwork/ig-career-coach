@@ -45,7 +45,7 @@ Your role is to provide actionable career advice, job search strategies, resume 
 
 **IMPORTANT: You teach the SOAR Method (not STAR):**
 - S = Situation
-- O = Obstacle(s) 
+- O = Obstacle(s)
 - A = Action
 - R = Result
 
@@ -127,6 +127,82 @@ The member is on the IG Insider Briefs page. Prioritize:
   return basePrompt + (contextPrompts[context] || '');
 }
 
+/**
+ * Search blog posts for relevant articles
+ */
+async function searchRelevantArticles(userMessage, toolContext) {
+  try {
+    // Extract keywords from user message
+    const stopWords = ['how', 'what', 'when', 'where', 'why', 'who', 'can', 'should', 'would', 'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'do', 'does', 'did', 'doing', 'have', 'has', 'had', 'having', 'my', 'your', 'i', 'me', 'you', 'help', 'need'];
+
+    const keywords = userMessage.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 2 && !stopWords.includes(word))
+      .slice(0, 5); // Top 5 keywords
+
+    if (keywords.length === 0) return [];
+
+    // Map context to blog categories
+    const contextToCategoryMap = {
+      'resume-analyzer-pro': 'resume',
+      'cover-letter-generator-pro': 'cover letter',
+      'interview-oracle-pro': 'interview',
+      'ig-interview-coach': 'interview',
+      'hidden-job-boards-tool': 'job search',
+    };
+
+    const preferredCategory = contextToCategoryMap[toolContext];
+
+    // Build search query
+    let query = supabase
+      .from('blog_posts')
+      .select('title, url, category')
+      .limit(5);
+
+    // Add keyword search - search in title
+    if (keywords.length > 0) {
+      const searchConditions = keywords.map(kw => `title.ilike.%${kw}%`).join(',');
+      query = query.or(searchConditions);
+    }
+
+    // Prioritize preferred category if available
+    if (preferredCategory) {
+      query = query.ilike('category', `%${preferredCategory}%`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Blog search error:', error);
+      return [];
+    }
+
+    return data || [];
+
+  } catch (error) {
+    console.error('Error searching articles:', error);
+    return [];
+  }
+}
+
+/**
+ * Format articles for Claude's context
+ */
+function formatArticlesForContext(articles) {
+  if (!articles || articles.length === 0) return '';
+
+  return `
+
+**Relevant Interview Guys Articles:**
+${articles.map(article => `- ${article.title}: ${article.url}`).join('\n')}
+
+When appropriate, you can reference these articles in your response by saying something like:
+"For more details, check out our guide: [${articles[0].title}](${articles[0].url})"
+
+Only mention articles if they're truly relevant to the user's question. Don't force it.`;
+}
+
 // Main handler
 exports.handler = async (event, context) => {
   // Only allow POST
@@ -146,6 +222,9 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({ error: 'Message is required' })
       };
     }
+
+    // Search for relevant blog articles
+    const relevantArticles = await searchRelevantArticles(message, toolContext);
 
     // Get or create conversation
     let conversationId = sessionId;
@@ -203,7 +282,7 @@ exports.handler = async (event, context) => {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
-      system: getSystemPrompt(toolContext),
+      system: getSystemPrompt(toolContext) + formatArticlesForContext(relevantArticles),
       messages: claudeMessages
     });
 
@@ -241,13 +320,14 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({
         message: assistantMessage,
         sessionId: conversationId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        relatedArticles: relevantArticles // Include articles in response
       })
     };
 
   } catch (error) {
     console.error('Chat error:', error);
-    
+
     return {
       statusCode: 500,
       headers: {
