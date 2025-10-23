@@ -4,6 +4,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { RAGRetriever } from './lib/rag.js';
+import { saveToHistory } from './utils/saveHistory.js';
 
 // Initialize clients
 const anthropic = new Anthropic({
@@ -326,7 +327,10 @@ export const handler = async (event, context) => {
   }
 
   try {
-    const { message, sessionId, context: toolContext, userId } = JSON.parse(event.body);
+    const { message, sessionId, context: toolContext, userId: bodyUserId } = JSON.parse(event.body);
+
+    // Get userId from headers (x-user-id) or body, default to 'anonymous'
+    const userId = event.headers['x-user-id'] || bodyUserId || 'anonymous';
 
     if (!message) {
       return {
@@ -468,8 +472,8 @@ export const handler = async (event, context) => {
       .update({ updated_at: new Date().toISOString() })
       .eq('id', conversationId);
 
-    // Return response with RAG metadata
-    return {
+    // Prepare response object
+    const responseObject = {
       statusCode: 200,
       headers,
       body: JSON.stringify({
@@ -481,6 +485,23 @@ export const handler = async (event, context) => {
         retrievedChunks: retrievedChunks // Number of knowledge chunks retrieved
       })
     };
+
+    // Save to history (after response is prepared, before returning)
+    // This fails silently so user still gets their response even if history saving fails
+    try {
+      await saveToHistory(
+        userId,
+        message,
+        assistantMessage,
+        toolContext || 'general'
+      );
+    } catch (historyError) {
+      // Log error but don't throw - user should still get their response
+      console.error('Failed to save chat history (non-critical):', historyError);
+    }
+
+    // Return response with RAG metadata
+    return responseObject;
 
   } catch (error) {
     console.error('❌ Chat function error:', error);
