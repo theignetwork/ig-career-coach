@@ -253,8 +253,8 @@ export function useChat(toolContext: string | null) {
     setShowTestimonialPrompt(false);
 
     if (response === 'yes') {
-      // Open testimonial form - replace with your actual URL
-      window.open('https://forms.gle/your-testimonial-form', '_blank');
+      // Open testimonial form in new tab
+      window.open('https://forms.gle/PevDPGbG8iiYNgpB6', '_blank');
       localStorage.setItem('ig-testimonial-asked', 'true');
       setTestimonialAsked(true);
     } else if (response === 'no') {
