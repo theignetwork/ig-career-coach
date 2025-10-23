@@ -54,7 +54,7 @@ export function ChatBubble({ onClick }: ChatBubbleProps) {
       {/* Chat Bubble */}
       <button
         onClick={onClick}
-        className="relative w-16 h-16 rounded-full bg-gradient-to-br from-primary-teal to-primary-teal-dark shadow-lg shadow-primary-teal/40 hover:scale-110 hover:shadow-xl transition-all duration-300 flex items-center justify-center"
+        className="relative w-16 h-16 rounded-full bg-gradient-to-br from-primary-teal to-primary-teal-dark shadow-lg shadow-primary-teal/40 hover:scale-110 hover:shadow-xl transition-all duration-300 flex items-center justify-center animate-pulse"
       >
         {/* Multiple pulsing rings for attention */}
         <span className="absolute inset-0 rounded-full border-2 border-primary-teal animate-ping opacity-75" />
