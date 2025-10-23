@@ -239,10 +239,28 @@ Only mention articles if they're truly relevant to the user's question. Don't fo
 
 // Main handler
 export const handler = async (event, context) => {
+  // CORS headers - allow requests from members site
+  const headers = {
+    'Access-Control-Allow-Origin': 'https://members.theinterviewguys.com',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json'
+  };
+
+  // Handle preflight OPTIONS request
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
+  }
+
   // Only allow POST
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: 'Method not allowed' })
     };
   }
@@ -253,9 +271,12 @@ export const handler = async (event, context) => {
     if (!message) {
       return {
         statusCode: 400,
+        headers,
         body: JSON.stringify({ error: 'Message is required' })
       };
     }
+
+    console.log('📨 Received chat request');
 
     // Initialize RAG-related variables
     let ragResults = null;
@@ -390,35 +411,26 @@ export const handler = async (event, context) => {
     // Return response with RAG metadata
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      },
+      headers,
       body: JSON.stringify({
-        message: assistantMessage,
-        sessionId: conversationId,
+        response: assistantMessage,
+        conversationId: conversationId,
         timestamp: new Date().toISOString(),
-        relatedArticles: relevantArticles,
+        sources: relevantArticles,
         citations: citations, // RAG sources used
         retrievedChunks: retrievedChunks // Number of knowledge chunks retrieved
       })
     };
 
   } catch (error) {
-    console.error('Chat error:', error);
+    console.error('❌ Chat function error:', error);
 
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
+      headers,
       body: JSON.stringify({
-        error: 'Failed to process message',
-        message: 'Sorry, I encountered an error. Please try again.',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: 'Internal server error',
+        message: error.message
       })
     };
   }

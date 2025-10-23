@@ -1,48 +1,23 @@
 [build]
   command = "npm run build"
+  publish = "dist"
   functions = "netlify/functions"
-  publish = "dist"
 
-[dev]
-  command = "vite"
-  targetPort = 5173
-  framework = "#custom"
-  publish = "dist"
-
-[functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["@anthropic-ai/sdk", "@supabase/supabase-js"]
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-  force = true
-
-[[headers]]
-  for = "/api/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Headers = "Content-Type"
-    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
-
-# CORS headers for all static assets
 [[headers]]
   for = "/*"
   [headers.values]
     Access-Control-Allow-Origin = "https://members.theinterviewguys.com"
-    Access-Control-Allow-Methods = "GET, HEAD, OPTIONS"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type"
 
-# CORS headers for JavaScript files
 [[headers]]
   for = "/assets/*.js"
   [headers.values]
     Access-Control-Allow-Origin = "https://members.theinterviewguys.com"
-    Access-Control-Allow-Methods = "GET, HEAD, OPTIONS"
+    Content-Type = "application/javascript"
 
-# CORS headers for CSS files
 [[headers]]
   for = "/assets/*.css"
   [headers.values]
     Access-Control-Allow-Origin = "https://members.theinterviewguys.com"
-    Access-Control-Allow-Methods = "GET, HEAD, OPTIONS"
+    Content-Type = "text/css"

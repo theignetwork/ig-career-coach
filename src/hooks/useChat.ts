@@ -179,58 +179,63 @@ export function useChat(toolContext: string | null) {
   }, [messages, conversationId]);
 
   const sendMessage = async (content: string) => {
-    // Add user message immediately
     const userMessage: Message = {
       role: 'user',
       content,
       timestamp: new Date()
     };
+
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
     try {
+      console.log('📤 Sending message to API:', { content, conversationId, toolContext });
+
       const response = await fetch('/.netlify/functions/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: content,
-          sessionId: conversationId,
-          context: toolContext,
-          userId: 'anonymous'
+          conversationId,
+          toolContext
         })
       });
 
+      console.log('📥 API Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('API error: ' + response.status);
+        const errorText = await response.text();
+        console.error('❌ API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`API error: ${response.status}`);
       }
 
       const data = await response.json();
-
-      // Determine if sources should be shown
-      const shouldShowSources = isSpecificQuestion(content);
+      console.log('✅ API Success:', data);
 
       const assistantMessage: Message = {
         role: 'assistant',
-        content: data.message,
-        sources: data.relatedArticles?.map((article: any) => ({
-          title: article.title,
-          url: article.url
-        })),
-        showSources: shouldShowSources,
+        content: data.response,
+        sources: data.sources,
+        showSources: isSpecificQuestion(content),
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      setConversationId(data.sessionId);
+      setConversationId(data.conversationId);
 
     } catch (error) {
-      console.error('Chat error:', error);
+      console.error('💥 Chat error:', error);
 
       const errorMessage: Message = {
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again in a moment.',
         timestamp: new Date()
       };
+
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
