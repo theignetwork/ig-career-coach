@@ -55,14 +55,24 @@ export function ChatBubble({ onClick }: ChatBubbleProps) {
       <button
         onClick={onClick}
         className="relative w-16 h-16 rounded-full bg-gradient-to-br from-primary-teal to-primary-teal-dark shadow-lg shadow-primary-teal/40 hover:scale-110 hover:shadow-xl transition-all duration-300 flex items-center justify-center animate-pulse"
+        style={{ zIndex: 10 }}
       >
         {/* Multiple pulsing rings for attention */}
-        <span className="absolute inset-0 rounded-full border-2 border-primary-teal animate-ping opacity-75" />
-        <span className="absolute inset-0 rounded-full border-2 border-primary-teal animate-ping opacity-50" style={{ animationDelay: '0.5s' }} />
-        <span className="absolute inset-0 rounded-full border-2 border-primary-teal animate-pulse opacity-60" />
+        <span
+          className="absolute inset-0 rounded-full border-2 border-primary-teal animate-ping opacity-75"
+          style={{ zIndex: 1, pointerEvents: 'none' }}
+        />
+        <span
+          className="absolute inset-0 rounded-full border-2 border-primary-teal animate-ping opacity-50"
+          style={{ animationDelay: '0.5s', zIndex: 2, pointerEvents: 'none' }}
+        />
+        <span
+          className="absolute inset-0 rounded-full border-2 border-primary-teal animate-pulse opacity-60"
+          style={{ zIndex: 3, pointerEvents: 'none' }}
+        />
 
         {/* Message icon */}
-        <MessageCircle className="w-8 h-8 text-white relative z-10" />
+        <MessageCircle className="w-8 h-8 text-white relative z-10" style={{ zIndex: 10 }} />
       </button>
     </div>
   );

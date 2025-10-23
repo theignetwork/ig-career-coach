@@ -19,6 +19,9 @@
 
   const CHAT_URL = 'https://ig-career-coach.netlify.app';
 
+  // Cache-busting timestamp
+  const cacheBuster = Date.now();
+
   async function loadChat() {
     try {
       console.log('🚀 Loading IG Career Coach...');
@@ -40,19 +43,19 @@
       window.__IG_CAREER_COACH_SHADOW_ROOT__ = shadow;
       window.__IG_CAREER_COACH_CONTAINER__ = container;
 
-      // Load CSS into shadow DOM
+      // Load CSS into shadow DOM with cache-busting
       console.log('📦 Loading styles...');
-      const cssResponse = await fetch(CHAT_URL + '/assets/index.css');
+      const cssResponse = await fetch(CHAT_URL + '/assets/index.css?v=' + cacheBuster);
       const cssText = await cssResponse.text();
       const style = document.createElement('style');
       style.textContent = cssText;
       shadow.appendChild(style);
 
-      // Load and execute JavaScript
+      // Load and execute JavaScript with cache-busting
       console.log('📦 Loading script...');
       const script = document.createElement('script');
       script.type = 'module';
-      script.src = CHAT_URL + '/assets/ig-career-coach.js';
+      script.src = CHAT_URL + '/assets/ig-career-coach.js?v=' + cacheBuster;
 
       // Append to document (not shadow) so it executes in global context
       document.body.appendChild(script);
