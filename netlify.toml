@@ -25,3 +25,24 @@
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Headers = "Content-Type"
     Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+
+# CORS headers for all static assets
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "https://members.theinterviewguys.com"
+    Access-Control-Allow-Methods = "GET, HEAD, OPTIONS"
+
+# CORS headers for JavaScript files
+[[headers]]
+  for = "/assets/*.js"
+  [headers.values]
+    Access-Control-Allow-Origin = "https://members.theinterviewguys.com"
+    Access-Control-Allow-Methods = "GET, HEAD, OPTIONS"
+
+# CORS headers for CSS files
+[[headers]]
+  for = "/assets/*.css"
+  [headers.values]
+    Access-Control-Allow-Origin = "https://members.theinterviewguys.com"
+    Access-Control-Allow-Methods = "GET, HEAD, OPTIONS"
