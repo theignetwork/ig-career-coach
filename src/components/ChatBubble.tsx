@@ -57,7 +57,6 @@ export function ChatBubble({ onClick }: ChatBubbleProps) {
           position: 'fixed',
           bottom: '1.5rem',
           right: '1.5rem',
-          touchAction: 'none',
           pointerEvents: 'auto',
         }}
       >

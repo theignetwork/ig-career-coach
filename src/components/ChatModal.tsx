@@ -50,11 +50,14 @@ export function ChatModal({ toolContext, onClose }: ChatModalProps) {
   };
   
   return (
-    <div className={`fixed bg-bg-darker rounded-2xl shadow-2xl border border-border-teal z-[999] flex flex-col transition-all duration-300 ease-in-out ${
-      isExpanded
-        ? 'inset-8'
-        : 'bottom-6 right-6 w-full max-w-[400px] h-[650px] md:w-[400px] animate-slide-up'
-    }`}>
+    <div
+      className={`fixed bg-bg-darker rounded-2xl shadow-2xl border border-border-teal z-[999] flex flex-col transition-all duration-300 ease-in-out ${
+        isExpanded
+          ? 'inset-8'
+          : 'bottom-6 right-6 w-full max-w-[400px] h-[650px] md:w-[400px] animate-slide-up'
+      }`}
+      style={{ pointerEvents: 'auto' }}
+    >
       {/* Header */}
       <div className="bg-gradient-to-r from-primary-teal to-primary-teal-dark p-5 flex items-center justify-between rounded-t-2xl">
         <div className="flex items-center gap-3">

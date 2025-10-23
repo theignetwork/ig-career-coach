@@ -39,8 +39,8 @@
       // Create container inside shadow DOM
       const container = document.createElement('div');
       container.id = 'ig-career-coach-root';
-      // Ensure container allows fixed positioning for chat bubble
-      container.style.cssText = 'position: relative; width: 100%; height: 100%;';
+      // Container takes no space but allows fixed children to render
+      container.style.cssText = 'position: absolute; width: 0; height: 0; pointer-events: none;';
       shadow.appendChild(container);
 
       // Expose shadow root and container globally so the app can find it
