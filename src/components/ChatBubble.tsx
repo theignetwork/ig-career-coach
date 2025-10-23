@@ -7,6 +7,7 @@ interface ChatBubbleProps {
 
 export function ChatBubble({ onClick }: ChatBubbleProps) {
   const [showBanner, setShowBanner] = useState(false);
+  const [isPulsing, setIsPulsing] = useState(true);
 
   useEffect(() => {
     // Check if banner was dismissed
@@ -16,6 +17,12 @@ export function ChatBubble({ onClick }: ChatBubbleProps) {
       const timer = setTimeout(() => setShowBanner(true), 2000);
       return () => clearTimeout(timer);
     }
+  }, []);
+
+  useEffect(() => {
+    // Stop pulsing after 5 seconds
+    const timer = setTimeout(() => setIsPulsing(false), 5000);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleDismissBanner = (e: React.MouseEvent) => {
@@ -75,35 +82,39 @@ export function ChatBubble({ onClick }: ChatBubbleProps) {
           onClick={onClick}
           className="relative w-16 h-16 rounded-full bg-gradient-to-br from-primary-teal to-primary-teal-dark shadow-lg shadow-primary-teal/40 hover:scale-110 hover:shadow-xl transition-all duration-300 flex items-center justify-center"
           style={{
-            animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            animation: isPulsing ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none',
           }}
         >
           {/* Pulsing ring animations - using inline styles for shadow DOM compatibility */}
-          <span
-            className="absolute inset-0 rounded-full bg-primary-teal"
-            style={{
-              opacity: 0.75,
-              animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite',
-              pointerEvents: 'none',
-            }}
-          />
-          <span
-            className="absolute inset-0 rounded-full bg-primary-teal"
-            style={{
-              opacity: 0.5,
-              animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite',
-              animationDelay: '0.5s',
-              pointerEvents: 'none',
-            }}
-          />
-          <span
-            className="absolute inset-0 rounded-full bg-primary-teal"
-            style={{
-              opacity: 0.6,
-              animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              pointerEvents: 'none',
-            }}
-          />
+          {isPulsing && (
+            <>
+              <span
+                className="absolute inset-0 rounded-full bg-primary-teal"
+                style={{
+                  opacity: 0.75,
+                  animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite',
+                  pointerEvents: 'none',
+                }}
+              />
+              <span
+                className="absolute inset-0 rounded-full bg-primary-teal"
+                style={{
+                  opacity: 0.5,
+                  animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite',
+                  animationDelay: '0.5s',
+                  pointerEvents: 'none',
+                }}
+              />
+              <span
+                className="absolute inset-0 rounded-full bg-primary-teal"
+                style={{
+                  opacity: 0.6,
+                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                  pointerEvents: 'none',
+                }}
+              />
+            </>
+          )}
 
           {/* Message icon */}
           <MessageCircle className="w-8 h-8 text-white relative" style={{ zIndex: 10 }} />
