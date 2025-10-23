@@ -248,7 +248,7 @@ async function searchRelevantArticles(userMessage, toolContext) {
     let query = supabase
       .from('blog_posts')
       .select('title, url, category')
-      .limit(5);
+      .limit(2);
 
     // Add keyword search - search in title
     if (keywords.length > 0) {
@@ -284,13 +284,17 @@ function formatArticlesForContext(articles) {
 
   return `
 
-**Relevant Interview Guys Articles:**
+**Relevant Interview Guys Articles (OPTIONAL - Use sparingly):**
 ${articles.map(article => `- ${article.title}: ${article.url}`).join('\n')}
 
-When appropriate, you can reference these articles in your response by saying something like:
-"For more details, check out our guide: [${articles[0].title}](${articles[0].url})"
+**IMPORTANT:** These articles are optional resources. Only include 1-2 article links in your response if they directly answer the user's specific question.
 
-Only mention articles if they're truly relevant to the user's question. Don't force it.`;
+Most responses should NOT include article links. It's perfectly fine (and often better) to give a direct answer without any links.
+
+If you do include a link, format it naturally like:
+"For more on this topic, check out: [${articles[0].title}](${articles[0].url})"
+
+Don't force it. Skip the links if your answer is already complete.`;
 }
 
 // Main handler
