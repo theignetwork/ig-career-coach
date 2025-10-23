@@ -2,6 +2,7 @@
 // Main chat endpoint for IG Career Coach with RAG enhancement
 
 import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { RAGRetriever } from './lib/rag.js';
 import { saveToHistory } from './utils/saveHistory.js';
@@ -11,6 +12,10 @@ import { searchUserHistory, isReferencingHistory, formatHistoryForContext } from
 // Initialize clients
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 const supabase = createClient(
@@ -155,7 +160,25 @@ Examples of good continuity:
 
 Examples of handling no history:
 ❌ Bad: "I don't have access to our previous conversations."
-✅ Good: "I don't have a record of that specific conversation, but I'm happy to help you with [topic] right now! What would you like to work on?"`;
+✅ Good: "I don't have a record of that specific conversation, but I'm happy to help you with [topic] right now! What would you like to work on?"
+
+## INSIDER BRIEFS USAGE
+
+When Insider Brief data is provided in the [INSIDER BRIEFS] section:
+- These contain proprietary market research from May-October 2025
+- Cite them as: "According to IG Insider Brief Drop #X (Date)..."
+- Market Temperature scores indicate hiring market strength:
+  - 70-100 = Strong hiring market
+  - 50-69 = Moderate/selective hiring
+  - Below 50 = Challenging market, employers pausing
+- Prioritize this recent data over general knowledge
+- Reference specific numbers, companies, and trends when available
+- These briefs give you an insider's edge - use them to provide cutting-edge advice
+
+Example citations:
+✅ "According to IG Insider Brief Drop #11 from October 2025, the Market Temperature dropped to 40/100..."
+✅ "Our latest market intelligence shows tech unemployment at a two-year low..."
+❌ Don't say: "I found some information..." (be specific about the source)`;
 
   // Add RAG context if available
   let fullPrompt = basePrompt;
@@ -316,6 +339,59 @@ If you do include a link, format it naturally like:
 Don't force it. Skip the links if your answer is already complete.`;
 }
 
+/**
+ * Retrieve relevant insider briefs based on query
+ */
+async function retrieveInsiderBriefs(query, limit = 3) {
+  try {
+    // Generate embedding for the query
+    const embeddingResponse = await openai.embeddings.create({
+      model: 'text-embedding-ada-002',
+      input: query
+    });
+    const queryEmbedding = embeddingResponse.data[0].embedding;
+
+    // Search insider briefs
+    const { data: briefs, error } = await supabase.rpc('match_insider_briefs', {
+      query_embedding: queryEmbedding,
+      match_threshold: 0.7,
+      match_count: limit
+    });
+
+    if (error) {
+      console.error('Error retrieving insider briefs:', error);
+      return '';
+    }
+
+    if (!briefs || briefs.length === 0) {
+      return '';
+    }
+
+    // Format briefs for context
+    let context = '\n\n[INSIDER BRIEFS - RECENT MARKET INTELLIGENCE]\n';
+    context += 'The following are excerpts from The Interview Guys Insider Briefs (proprietary market research from 2025):\n\n';
+
+    for (const brief of briefs) {
+      const date = new Date(brief.brief_date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      context += `Drop #${brief.brief_number} (${date}) - Market Score: ${brief.market_score}/100\n`;
+      context += `${brief.chunk_text}\n\n`;
+    }
+
+    context += '[END INSIDER BRIEFS]\n';
+
+    console.log(`📊 Retrieved ${briefs.length} insider brief chunks`);
+    return context;
+
+  } catch (error) {
+    console.error('Error in retrieveInsiderBriefs:', error);
+    return '';
+  }
+}
+
 // Main handler
 export const handler = async (event, context) => {
   // CORS headers - allow requests from members site
@@ -423,6 +499,15 @@ export const handler = async (event, context) => {
       }
     }
 
+    // NEW: Retrieve relevant insider briefs
+    let insiderBriefContext = '';
+    try {
+      insiderBriefContext = await retrieveInsiderBriefs(message, 3);
+    } catch (error) {
+      console.error('Error retrieving insider briefs (non-critical):', error);
+      // Continue without insider briefs if it fails
+    }
+
     // Get or create conversation
     let conversationId = sessionId;
     let conversationHistory = [];
@@ -475,8 +560,8 @@ export const handler = async (event, context) => {
       }
     ];
 
-    // Build system prompt with RAG context and conversation history
-    const systemPrompt = getSystemPrompt(toolContext, ragContext) + historyContext + formatArticlesForContext(relevantArticles);
+    // Build system prompt with RAG context, conversation history, and insider briefs
+    const systemPrompt = getSystemPrompt(toolContext, ragContext) + historyContext + insiderBriefContext + formatArticlesForContext(relevantArticles);
 
     // Call Anthropic API
     const response = await anthropic.messages.create({
