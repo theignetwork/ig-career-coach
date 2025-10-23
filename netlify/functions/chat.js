@@ -164,8 +164,13 @@ Examples of handling no history:
 
 ## INSIDER BRIEFS USAGE
 
+**CURRENT DATE: October 23, 2025**
+**MOST RECENT BRIEF: Drop #11 from October 13, 2025 (10 days ago)**
+
 When Insider Brief data is provided in the [INSIDER BRIEFS] section:
 - These contain proprietary market research from May-October 2025
+- The briefs are sorted by date (most recent first) for your convenience
+- **When users ask about "current market" or "right now", prioritize Drop #11 as it contains the most up-to-date data**
 - Cite them as: "According to IG Insider Brief Drop #X (Date)..."
 - Market Temperature scores indicate hiring market strength:
   - 70-100 = Strong hiring market
@@ -176,9 +181,11 @@ When Insider Brief data is provided in the [INSIDER BRIEFS] section:
 - These briefs give you an insider's edge - use them to provide cutting-edge advice
 
 Example citations:
-✅ "According to IG Insider Brief Drop #11 from October 2025, the Market Temperature dropped to 40/100..."
-✅ "Our latest market intelligence shows tech unemployment at a two-year low..."
-❌ Don't say: "I found some information..." (be specific about the source)`;
+✅ "According to our most recent IG Insider Brief Drop #11 from October 13, 2025, the Market Temperature dropped to 40/100..."
+✅ "As of mid-October 2025, our latest market intelligence shows the hiring market has cooled significantly..."
+✅ "The current market (per Drop #11) shows employers are pausing hiring..."
+❌ Don't say: "I found some information..." (be specific about the source)
+❌ Don't treat 2025 dates as future dates - they are current/recent data`;
 
   // Add RAG context if available
   let fullPrompt = basePrompt;
@@ -367,9 +374,13 @@ async function retrieveInsiderBriefs(query, limit = 3) {
       return '';
     }
 
+    // Sort by date (most recent first) to prioritize current data
+    briefs.sort((a, b) => new Date(b.brief_date) - new Date(a.brief_date));
+
     // Format briefs for context
     let context = '\n\n[INSIDER BRIEFS - RECENT MARKET INTELLIGENCE]\n';
-    context += 'The following are excerpts from The Interview Guys Insider Briefs (proprietary market research from 2025):\n\n';
+    context += 'The following are excerpts from The Interview Guys Insider Briefs (proprietary market research from 2025):\n';
+    context += '**MOST RECENT BRIEF: Drop #11 from October 13, 2025 (10 days ago)**\n\n';
 
     for (const brief of briefs) {
       const date = new Date(brief.brief_date).toLocaleDateString('en-US', {
