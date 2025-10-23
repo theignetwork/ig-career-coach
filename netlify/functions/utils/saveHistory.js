@@ -5,7 +5,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-export async function saveToHistory(userId, userMessage, assistantMessage, toolContext = 'general') {
+export async function saveToHistory(userId, userMessage, assistantMessage, toolContext = 'general', toolsRecommended = []) {
   try {
     // Save user message
     await supabase.from('chat_history').insert({
@@ -15,12 +15,13 @@ export async function saveToHistory(userId, userMessage, assistantMessage, toolC
       tool_context: toolContext
     });
 
-    // Save assistant message
+    // Save assistant message with tools recommended
     await supabase.from('chat_history').insert({
       user_id: userId,
       message: assistantMessage,
       role: 'assistant',
-      tool_context: toolContext
+      tool_context: toolContext,
+      tools_recommended: toolsRecommended.length > 0 ? toolsRecommended : null
     });
 
     console.log('Chat history saved successfully');

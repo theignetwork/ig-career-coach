@@ -5,6 +5,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { RAGRetriever } from './lib/rag.js';
 import { saveToHistory } from './utils/saveHistory.js';
+import { recommendTools, formatRecommendations } from './utils/recommendTools.js';
+import { searchUserHistory, isReferencingHistory, formatHistoryForContext } from './utils/searchHistory.js';
 
 // Initialize clients
 const anthropic = new Anthropic({
@@ -137,7 +139,23 @@ Format links like: [Article Title](https://blog.theinterviewguys.com/article-url
 **Keep responses:**
 - Under 300 words when possible
 - Focused on what the member asked
-- Action-oriented with clear next steps`;
+- Action-oriented with clear next steps
+
+## CONVERSATION CONTINUITY
+
+When users reference past conversations:
+- Check the [CONVERSATION HISTORY] section for relevant context
+- Reference specific details naturally (don't say "on October 23rd you said..." - just incorporate the context)
+- Show that you remember and build on previous discussions
+- If they say "remember when..." and no history is found, politely say you don't have record of that specific conversation but offer to help now
+
+Examples of good continuity:
+❌ Bad: "According to our conversation on 2025-10-20, you were working on your resume."
+✅ Good: "Right, you were optimizing your resume for PM roles. Have you made those ATS improvements we discussed?"
+
+Examples of handling no history:
+❌ Bad: "I don't have access to our previous conversations."
+✅ Good: "I don't have a record of that specific conversation, but I'm happy to help you with [topic] right now! What would you like to work on?"`;
 
   // Add RAG context if available
   let fullPrompt = basePrompt;
@@ -385,6 +403,26 @@ export const handler = async (event, context) => {
     // Search for relevant blog articles
     const relevantArticles = await searchRelevantArticles(message, toolContext);
 
+    // Check if user is referencing past conversations
+    const needsHistory = isReferencingHistory(message);
+
+    // Retrieve relevant past conversations if needed
+    let historyContext = '';
+    if (needsHistory) {
+      try {
+        const pastMessages = await searchUserHistory(userId, message, 5);
+        if (pastMessages.length > 0) {
+          historyContext = formatHistoryForContext(pastMessages);
+          console.log(`📚 Retrieved ${pastMessages.length} relevant past messages for context`);
+        } else {
+          console.log('📚 User referenced history but no relevant past messages found');
+        }
+      } catch (error) {
+        console.error('Error retrieving history:', error);
+        // Continue without history if it fails
+      }
+    }
+
     // Get or create conversation
     let conversationId = sessionId;
     let conversationHistory = [];
@@ -437,8 +475,8 @@ export const handler = async (event, context) => {
       }
     ];
 
-    // Build system prompt with RAG context
-    const systemPrompt = getSystemPrompt(toolContext, ragContext) + formatArticlesForContext(relevantArticles);
+    // Build system prompt with RAG context and conversation history
+    const systemPrompt = getSystemPrompt(toolContext, ragContext) + historyContext + formatArticlesForContext(relevantArticles);
 
     // Call Anthropic API
     const response = await anthropic.messages.create({
@@ -450,19 +488,60 @@ export const handler = async (event, context) => {
 
     const assistantMessage = response.content[0].text;
 
-    // Save assistant message
+    // NEW: Check if we should recommend tools
+    let finalMessage = assistantMessage;
+    let toolsRecommended = [];
+
+    try {
+      // Get tools already recommended in this session
+      const { data: sessionHistory } = await supabase
+        .from('chat_history')
+        .select('tools_recommended')
+        .eq('user_id', userId)
+        .not('tools_recommended', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      // Collect all tools recommended in recent history
+      const recentlyRecommended = new Set();
+      if (sessionHistory) {
+        for (const row of sessionHistory) {
+          if (row.tools_recommended) {
+            row.tools_recommended.forEach(tool => recentlyRecommended.add(tool));
+          }
+        }
+      }
+
+      // Get recommendations based on user's message
+      const recommendations = recommendTools(message, Array.from(recentlyRecommended));
+
+      // If we have recommendations, append them to the response
+      if (recommendations.shouldRecommend) {
+        const formattedRecs = formatRecommendations(recommendations.tools);
+        finalMessage = assistantMessage + formattedRecs;
+        toolsRecommended = recommendations.tools.map(t => t.toolId);
+        console.log(`💡 Recommending tools: ${toolsRecommended.join(', ')}`);
+      }
+
+    } catch (recError) {
+      console.error('Tool recommendation error (non-critical):', recError);
+      // Continue with response without recommendations
+    }
+
+    // Save assistant message (with recommendations if any)
     await supabase
       .from('messages')
       .insert({
         conversation_id: conversationId,
         role: 'assistant',
-        message: assistantMessage,
+        message: finalMessage,
         context: toolContext || null,
         metadata: {
           model: 'claude-sonnet-4-20250514',
           usage: response.usage,
           rag_chunks_used: retrievedChunks,
-          citations: citations
+          citations: citations,
+          tools_recommended: toolsRecommended
         }
       });
 
@@ -477,12 +556,13 @@ export const handler = async (event, context) => {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        response: assistantMessage,
+        response: finalMessage,
         conversationId: conversationId,
         timestamp: new Date().toISOString(),
         sources: relevantArticles,
         citations: citations, // RAG sources used
-        retrievedChunks: retrievedChunks // Number of knowledge chunks retrieved
+        retrievedChunks: retrievedChunks, // Number of knowledge chunks retrieved
+        toolsRecommended: toolsRecommended // Tools recommended in this response
       })
     };
 
@@ -492,8 +572,9 @@ export const handler = async (event, context) => {
       await saveToHistory(
         userId,
         message,
-        assistantMessage,
-        toolContext || 'general'
+        finalMessage,
+        toolContext || 'general',
+        toolsRecommended
       );
     } catch (historyError) {
       // Log error but don't throw - user should still get their response
