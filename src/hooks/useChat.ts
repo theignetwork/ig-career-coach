@@ -191,7 +191,7 @@ export function useChat(toolContext: string | null) {
     try {
       console.log('📤 Sending message to API:', { content, conversationId, toolContext });
 
-      const response = await fetch('/.netlify/functions/chat', {
+      const response = await fetch('https://ig-career-coach.netlify.app/.netlify/functions/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

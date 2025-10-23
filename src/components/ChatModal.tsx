@@ -46,9 +46,7 @@ export function ChatModal({ toolContext, onClose }: ChatModalProps) {
   };
   
   const handleBackToMenu = () => {
-    if (window.confirm('Return to main menu? (Your conversation will be saved)')) {
-      clearMessages();
-    }
+    clearMessages();
   };
   
   return (
