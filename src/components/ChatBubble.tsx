@@ -51,7 +51,16 @@ export function ChatBubble({ onClick }: ChatBubbleProps) {
         }
       `}</style>
 
-      <div className="fixed bottom-6 right-6 z-[1000]">
+      <div
+        className="fixed bottom-6 right-6 z-[1000]"
+        style={{
+          position: 'fixed',
+          bottom: '1.5rem',
+          right: '1.5rem',
+          touchAction: 'none',
+          pointerEvents: 'auto',
+        }}
+      >
         {/* CTA Banner */}
         {showBanner && (
           <div className="absolute bottom-20 right-0 mb-2 animate-bounce-gentle">
@@ -83,6 +92,8 @@ export function ChatBubble({ onClick }: ChatBubbleProps) {
           className="relative w-16 h-16 rounded-full bg-gradient-to-br from-primary-teal to-primary-teal-dark shadow-lg shadow-primary-teal/40 hover:scale-110 hover:shadow-xl transition-all duration-300 flex items-center justify-center"
           style={{
             animation: isPulsing ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
           }}
         >
           {/* Pulsing ring animations - using inline styles for shadow DOM compatibility */}

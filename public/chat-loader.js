@@ -29,6 +29,8 @@
       // Create host element
       const host = document.createElement('div');
       host.id = 'ig-career-coach-host';
+      // Ensure host doesn't interfere with layout or positioning
+      host.style.cssText = 'position: fixed; top: 0; left: 0; width: 0; height: 0; pointer-events: none; z-index: 999999;';
       document.body.appendChild(host);
 
       // Create shadow root for complete style isolation
@@ -37,6 +39,8 @@
       // Create container inside shadow DOM
       const container = document.createElement('div');
       container.id = 'ig-career-coach-root';
+      // Ensure container allows fixed positioning for chat bubble
+      container.style.cssText = 'position: relative; width: 100%; height: 100%;';
       shadow.appendChild(container);
 
       // Expose shadow root and container globally so the app can find it
