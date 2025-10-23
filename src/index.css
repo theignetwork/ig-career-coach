@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/* CSS Isolation - Prevent host site styles from affecting chat */
+#ig-career-coach-root {
+  all: initial;
+  display: block !important;
+}
+
+#ig-career-coach-root * {
+  all: revert;
+  box-sizing: border-box;
+}
+
 @theme {
   --color-primary-teal: #06d6a0;
   --color-primary-teal-dark: #04a881;
