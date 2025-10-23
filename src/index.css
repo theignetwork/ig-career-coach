@@ -1,33 +1,5 @@
 @import "tailwindcss";
 
-/* CSS Isolation - Prevent host site styles from affecting chat */
-#ig-career-coach-root {
-  /* Reset only problematic inherited properties, not display/position */
-  font: initial;
-  color: initial;
-  background: initial;
-  border: initial;
-  margin: 0;
-  padding: 0;
-  line-height: initial;
-  text-align: initial;
-  text-decoration: initial;
-  text-transform: initial;
-  letter-spacing: initial;
-  word-spacing: initial;
-
-  /* Ensure it's visible and positioned */
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-#ig-career-coach-root *,
-#ig-career-coach-root *::before,
-#ig-career-coach-root *::after {
-  box-sizing: border-box;
-}
-
 @theme {
   --color-primary-teal: #06d6a0;
   --color-primary-teal-dark: #04a881;
