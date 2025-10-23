@@ -1,21 +1,69 @@
-import { MessageCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MessageCircle, X } from 'lucide-react';
 
 interface ChatBubbleProps {
   onClick: () => void;
 }
 
 export function ChatBubble({ onClick }: ChatBubbleProps) {
+  const [showBanner, setShowBanner] = useState(false);
+
+  useEffect(() => {
+    // Check if banner was dismissed
+    const dismissed = localStorage.getItem('ig-chat-cta-dismissed');
+    if (!dismissed) {
+      // Show banner after 2 seconds
+      const timer = setTimeout(() => setShowBanner(true), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleDismissBanner = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowBanner(false);
+    localStorage.setItem('ig-chat-cta-dismissed', 'true');
+  };
+
   return (
-    <button
-      onClick={onClick}
-      className="fixed bottom-6 right-6 w-16 h-16 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-primary-teal to-primary-teal-dark shadow-lg shadow-primary-teal/40 hover:scale-110 hover:shadow-xl transition-all duration-300 z-[1000] flex items-center justify-center"
-    >
-      {/* Pulse rings */}
-      <div className="absolute inset-0 rounded-full border-2 border-primary-teal animate-ping opacity-75" />
-      <div className="absolute inset-0 rounded-full border-2 border-primary-teal animate-ping opacity-75 animation-delay-1000" />
-      
-      {/* Message icon */}
-      <MessageCircle className="w-8 h-8 text-white relative z-10" />
-    </button>
+    <div className="fixed bottom-6 right-6 z-[1000]">
+      {/* CTA Banner */}
+      {showBanner && (
+        <div className="absolute bottom-20 right-0 mb-2 animate-bounce-gentle">
+          <div className="relative bg-gradient-to-br from-primary-teal to-primary-teal-dark text-white rounded-2xl shadow-2xl shadow-primary-teal/40 p-4 pr-10 min-w-[240px]">
+            {/* Dismiss button */}
+            <button
+              onClick={handleDismissBanner}
+              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+              aria-label="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Banner content */}
+            <div className="space-y-1">
+              <p className="text-sm font-semibold">Need Help or Advice?</p>
+              <p className="text-xs opacity-90">Ask The IG Career Coach</p>
+            </div>
+
+            {/* Arrow pointing down */}
+            <div className="absolute -bottom-2 right-6 w-4 h-4 bg-gradient-to-br from-primary-teal to-primary-teal-dark transform rotate-45"></div>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Bubble */}
+      <button
+        onClick={onClick}
+        className="relative w-16 h-16 rounded-full bg-gradient-to-br from-primary-teal to-primary-teal-dark shadow-lg shadow-primary-teal/40 hover:scale-110 hover:shadow-xl transition-all duration-300 flex items-center justify-center"
+      >
+        {/* Multiple pulsing rings for attention */}
+        <span className="absolute inset-0 rounded-full border-2 border-primary-teal animate-ping opacity-75" />
+        <span className="absolute inset-0 rounded-full border-2 border-primary-teal animate-ping opacity-50" style={{ animationDelay: '0.5s' }} />
+        <span className="absolute inset-0 rounded-full border-2 border-primary-teal animate-pulse opacity-60" />
+
+        {/* Message icon */}
+        <MessageCircle className="w-8 h-8 text-white relative z-10" />
+      </button>
+    </div>
   );
 }
