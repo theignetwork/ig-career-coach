@@ -1,8 +1,8 @@
 // netlify/functions/lib/rag.js
 // RAG (Retrieval Augmented Generation) module for knowledge base retrieval
 
-const { OpenAI } = require('openai');
-const { createClient } = require('@supabase/supabase-js');
+import { OpenAI } from 'openai';
+import { createClient } from '@supabase/supabase-js';
 
 // Configuration
 const EMBEDDING_MODEL = 'text-embedding-ada-002';
@@ -288,7 +288,7 @@ async function storeUserResume(supabase, userId, resumeText, metadata = {}) {
   }
 }
 
-module.exports = {
+export {
   RAGRetriever,
   storeConversation,
   storeUserResume

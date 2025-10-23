@@ -1,7 +1,7 @@
 // netlify/functions/search-blog-posts.js
 // Search blog posts by keywords
 
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -98,7 +98,7 @@ async function smartSearch(userQuery, context = null) {
 }
 
 // Main handler
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
   // Handle CORS
   if (event.httpMethod === 'OPTIONS') {
     return {

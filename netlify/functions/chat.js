@@ -1,9 +1,9 @@
 // netlify/functions/chat.js
 // Main chat endpoint for IG Career Coach with RAG enhancement
 
-const Anthropic = require('@anthropic-ai/sdk');
-const { createClient } = require('@supabase/supabase-js');
-const { RAGRetriever } = require('./lib/rag');
+import Anthropic from '@anthropic-ai/sdk';
+import { createClient } from '@supabase/supabase-js';
+import { RAGRetriever } from './lib/rag.js';
 
 // Initialize clients
 const anthropic = new Anthropic({
@@ -238,7 +238,7 @@ Only mention articles if they're truly relevant to the user's question. Don't fo
 }
 
 // Main handler
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
   // Only allow POST
   if (event.httpMethod !== 'POST') {
     return {
