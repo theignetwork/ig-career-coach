@@ -8,6 +8,20 @@ import { RAGRetriever } from './lib/rag.js';
 import { saveToHistory } from './utils/saveHistory.js';
 import { recommendTools, formatRecommendations } from './utils/recommendTools.js';
 import { searchUserHistory, isReferencingHistory, formatHistoryForContext } from './utils/searchHistory.js';
+import {
+  isSettingGoal,
+  parseGoal,
+  saveGoal,
+  getGoalsNeedingCheckIn,
+  isReportingProgress,
+  parseProgress,
+  saveProgress,
+  completeGoal,
+  getActiveGoals,
+  formatGoalCheckIn,
+  formatProgressCelebration,
+  formatGoalConfirmation
+} from './utils/goalTracking.js';
 
 // Initialize clients
 const anthropic = new Anthropic({
@@ -185,7 +199,39 @@ Example citations:
 ✅ "As of mid-October 2025, our latest market intelligence shows the hiring market has cooled significantly..."
 ✅ "The current market (per Drop #11) shows employers are pausing hiring..."
 ❌ Don't say: "I found some information..." (be specific about the source)
-❌ Don't treat 2025 dates as future dates - they are current/recent data`;
+❌ Don't treat 2025 dates as future dates - they are current/recent data
+
+## ACCOUNTABILITY & GOAL TRACKING
+
+You help users stay accountable to their job search goals. When users:
+
+**Set goals:**
+- Phrases like "I want to apply to 10 jobs this week"
+- Acknowledge: "Got it! I'll help you stay on track."
+- Don't be overly formal - be like a supportive friend
+- Ask for initial progress count
+
+**Report progress:**
+- Listen for numbers and accomplishments
+- Celebrate wins genuinely (use emojis: 🎉 💪 🔥)
+- Encourage if they're behind, don't judge
+- Examples:
+  - 100%+: "🎉 You CRUSHED it! Above and beyond!"
+  - 80-99%: "💪 So close! You're almost there!"
+  - 50-79%: "🚀 You're over halfway - keep pushing!"
+  - <50%: "💪 Every step counts. What's your plan to finish strong?"
+
+**Need check-ins:**
+- If [ACTIVE GOAL] is provided, naturally ask about it
+- Don't interrupt urgent questions
+- Time it right: "Quick check-in before we dive in..."
+- Or: "By the way, how's that goal coming along?"
+
+**Show progress:**
+- When asked "show my goals", they'll see a formatted list
+- You can reference this: "Looks like you're at 5/10 applications!"
+
+Be encouraging, genuine, and conversational - like a supportive friend, not a robot.`;
 
   // Add RAG context if available
   let fullPrompt = basePrompt;
@@ -403,6 +449,37 @@ async function retrieveInsiderBriefs(query, limit = 3) {
   }
 }
 
+/**
+ * Helper function: Get time ago string
+ */
+function getTimeAgoHelper(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Earlier today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 14) return 'Last week';
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return 'A while back';
+}
+
+/**
+ * Helper function: Get goal type label
+ */
+function getGoalTypeLabel(goalType) {
+  const labels = {
+    'applications': 'applications',
+    'networking': 'connections',
+    'follow_ups': 'follow-ups',
+    'interviews': 'interviews',
+    'resume_updates': 'resume updates',
+    'general': 'items'
+  };
+  return labels[goalType] || 'items';
+}
+
 // Main handler
 export const handler = async (event, context) => {
   // CORS headers - allow requests from members site
@@ -519,6 +596,99 @@ export const handler = async (event, context) => {
       // Continue without insider briefs if it fails
     }
 
+    // GOAL TRACKING: Check if user is setting a new goal
+    let goalConfirmation = '';
+    let newGoal = null;
+
+    if (isSettingGoal(message)) {
+      const goalData = parseGoal(message);
+      newGoal = await saveGoal(userId, goalData);
+
+      if (newGoal) {
+        console.log('🎯 New goal created:', newGoal.id);
+        goalConfirmation = formatGoalConfirmation(newGoal);
+      }
+    }
+
+    // GOAL TRACKING: Check for active goals needing check-in
+    let goalCheckIn = '';
+    let pendingGoal = null;
+
+    if (!newGoal) { // Don't check in if they just set a goal
+      try {
+        const goalsNeedingCheckIn = await getGoalsNeedingCheckIn(userId);
+
+        if (goalsNeedingCheckIn.length > 0) {
+          pendingGoal = goalsNeedingCheckIn[0];
+
+          // Calculate total progress from goal_progress array
+          const totalProgress = pendingGoal.goal_progress?.reduce((sum, p) => sum + p.progress_count, 0) || 0;
+          pendingGoal.total_progress = totalProgress;
+
+          goalCheckIn = formatGoalCheckIn(pendingGoal);
+          console.log('🎯 Goal needs check-in:', pendingGoal.id);
+        }
+      } catch (error) {
+        console.error('Error checking goals:', error);
+      }
+    }
+
+    // GOAL TRACKING: Check if user is reporting progress
+    let progressCelebration = '';
+
+    if (isReportingProgress(message) && pendingGoal) {
+      const progressData = parseProgress(message);
+
+      if (progressData.progressCount) {
+        const saved = await saveProgress(userId, pendingGoal.id, progressData);
+
+        if (saved) {
+          // Calculate total progress
+          const totalProgress = (pendingGoal.total_progress || 0) + progressData.progressCount;
+
+          progressCelebration = formatProgressCelebration(
+            pendingGoal,
+            progressData.progressCount,
+            totalProgress
+          );
+
+          // Mark goal as complete if target reached
+          if (pendingGoal.target_number && totalProgress >= pendingGoal.target_number) {
+            await completeGoal(pendingGoal.id);
+          }
+
+          console.log('🎯 Progress saved:', progressData.progressCount);
+        }
+      }
+    }
+
+    // GOAL TRACKING: Handle "show my goals" command
+    let goalsDisplay = '';
+
+    if (message.toLowerCase().includes('show my goals') ||
+        message.toLowerCase().includes('my goals') ||
+        message.toLowerCase().includes('what are my goals')) {
+      try {
+        const activeGoals = await getActiveGoals(userId);
+
+        if (activeGoals.length > 0) {
+          goalsDisplay = '\n\n📋 **Your Active Goals:**\n\n';
+          activeGoals.forEach((goal, index) => {
+            goalsDisplay += `${index + 1}. ${goal.goal_text}\n`;
+            if (goal.target_number) {
+              goalsDisplay += `   Progress: ${goal.total_progress || 0}/${goal.target_number}\n`;
+            }
+            const timeAgo = getTimeAgoHelper(goal.created_at);
+            goalsDisplay += `   Set ${timeAgo}\n\n`;
+          });
+        } else {
+          goalsDisplay = '\n\n📋 You don\'t have any active goals yet. Want to set one?\n\n';
+        }
+      } catch (error) {
+        console.error('Error retrieving active goals:', error);
+      }
+    }
+
     // Get or create conversation
     let conversationId = sessionId;
     let conversationHistory = [];
@@ -571,8 +741,22 @@ export const handler = async (event, context) => {
       }
     ];
 
-    // Build system prompt with RAG context, conversation history, and insider briefs
-    const systemPrompt = getSystemPrompt(toolContext, ragContext) + historyContext + insiderBriefContext + formatArticlesForContext(relevantArticles);
+    // Build goal tracking context for system prompt
+    let goalTrackingContext = '';
+    if (pendingGoal) {
+      const goalTypeLabel = getGoalTypeLabel(pendingGoal.goal_type);
+      goalTrackingContext = `\n\n[ACTIVE GOAL NEEDING CHECK-IN]\n`;
+      goalTrackingContext += `The user has an active goal: "${pendingGoal.goal_text}"\n`;
+      if (pendingGoal.target_number) {
+        goalTrackingContext += `Target: ${pendingGoal.target_number} ${goalTypeLabel} per ${pendingGoal.target_period}\n`;
+        goalTrackingContext += `Current progress: ${pendingGoal.total_progress || 0}/${pendingGoal.target_number}\n`;
+      }
+      goalTrackingContext += `You should check in on this goal in your response.\n`;
+      goalTrackingContext += `[END ACTIVE GOAL]\n`;
+    }
+
+    // Build system prompt with RAG context, conversation history, insider briefs, and goal tracking
+    const systemPrompt = getSystemPrompt(toolContext, ragContext) + historyContext + insiderBriefContext + goalTrackingContext + formatArticlesForContext(relevantArticles);
 
     // Call Anthropic API
     const response = await anthropic.messages.create({
@@ -624,7 +808,25 @@ export const handler = async (event, context) => {
       // Continue with response without recommendations
     }
 
-    // Save assistant message (with recommendations if any)
+    // GOAL TRACKING: Add goal messages to final response
+    // Priority: goals display > check-in > confirmation > progress celebration
+    if (goalsDisplay) {
+      finalMessage = goalsDisplay + '\n\n' + finalMessage;
+    }
+
+    if (goalCheckIn && !goalConfirmation && !progressCelebration) {
+      finalMessage = goalCheckIn + '\n\n---\n\n' + finalMessage;
+    }
+
+    if (goalConfirmation) {
+      finalMessage = finalMessage + '\n\n' + goalConfirmation;
+    }
+
+    if (progressCelebration) {
+      finalMessage = finalMessage + '\n\n' + progressCelebration;
+    }
+
+    // Save assistant message (with recommendations and goal messages if any)
     await supabase
       .from('messages')
       .insert({
