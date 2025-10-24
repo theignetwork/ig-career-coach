@@ -317,53 +317,32 @@ The member is on the IG Insider Briefs page. Prioritize:
  */
 async function searchRelevantArticles(userMessage, toolContext) {
   try {
-    // Extract keywords from user message
-    const stopWords = ['how', 'what', 'when', 'where', 'why', 'who', 'can', 'should', 'would', 'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'do', 'does', 'did', 'doing', 'have', 'has', 'had', 'having', 'my', 'your', 'i', 'me', 'you', 'help', 'need'];
+    // Generate embedding for the user's message
+    const embeddingResponse = await openai.embeddings.create({
+      model: 'text-embedding-ada-002',
+      input: userMessage
+    });
+    const queryEmbedding = embeddingResponse.data[0].embedding;
 
-    const keywords = userMessage.toLowerCase()
-      .replace(/[^\w\s]/g, ' ')
-      .split(/\s+/)
-      .filter(word => word.length > 2 && !stopWords.includes(word))
-      .slice(0, 5); // Top 5 keywords
-
-    if (keywords.length === 0) return [];
-
-    // Map context to blog categories
-    const contextToCategoryMap = {
-      'resume-analyzer-pro': 'resume',
-      'cover-letter-generator-pro': 'cover letter',
-      'interview-oracle-pro': 'interview',
-      'ig-interview-coach': 'interview',
-      'hidden-job-boards-tool': 'job search',
-    };
-
-    const preferredCategory = contextToCategoryMap[toolContext];
-
-    // Build search query
-    let query = supabase
-      .from('blog_posts')
-      .select('title, url, category')
-      .limit(2);
-
-    // Add keyword search - search in title
-    if (keywords.length > 0) {
-      const searchConditions = keywords.map(kw => `title.ilike.%${kw}%`).join(',');
-      query = query.or(searchConditions);
-    }
-
-    // Prioritize preferred category if available
-    if (preferredCategory) {
-      query = query.ilike('category', `%${preferredCategory}%`);
-    }
-
-    const { data, error } = await query;
+    // Search blog posts using semantic similarity
+    const { data: articles, error } = await supabase.rpc('match_blog_posts', {
+      query_embedding: queryEmbedding,
+      match_threshold: 0.75,
+      match_count: 2  // Return top 2 most relevant articles
+    });
 
     if (error) {
       console.error('Blog search error:', error);
       return [];
     }
 
-    return data || [];
+    if (!articles || articles.length === 0) {
+      return [];
+    }
+
+    console.log(`📰 Retrieved ${articles.length} relevant blog posts via semantic search`);
+
+    return articles;
 
   } catch (error) {
     console.error('Error searching articles:', error);
