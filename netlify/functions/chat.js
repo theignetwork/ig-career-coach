@@ -788,13 +788,10 @@ export const handler = async (event, context) => {
     }
 
     // GOAL TRACKING: Add goal messages to final response
-    // Priority: goals display > check-in > confirmation > progress celebration
+    // Note: goalCheckIn is now returned separately as a banner/alert
+    // Priority for inline messages: goals display > confirmation > progress celebration
     if (goalsDisplay) {
       finalMessage = goalsDisplay + '\n\n' + finalMessage;
-    }
-
-    if (goalCheckIn && !goalConfirmation && !progressCelebration) {
-      finalMessage = goalCheckIn + '\n\n---\n\n' + finalMessage;
     }
 
     if (goalConfirmation) {
@@ -839,7 +836,18 @@ export const handler = async (event, context) => {
         sources: relevantArticles,
         citations: citations, // RAG sources used
         retrievedChunks: retrievedChunks, // Number of knowledge chunks retrieved
-        toolsRecommended: toolsRecommended // Tools recommended in this response
+        toolsRecommended: toolsRecommended, // Tools recommended in this response
+        goalCheckIn: (goalCheckIn && !goalConfirmation && !progressCelebration) ? {
+          message: goalCheckIn,
+          goal: pendingGoal ? {
+            id: pendingGoal.id,
+            goalText: pendingGoal.goal_text,
+            targetNumber: pendingGoal.target_number,
+            targetPeriod: pendingGoal.target_period,
+            goalType: pendingGoal.goal_type,
+            currentProgress: pendingGoal.total_progress || 0
+          } : null
+        } : null // Return goal check-in separately for banner display
       })
     };
 

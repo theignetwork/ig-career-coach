@@ -1,8 +1,12 @@
 // scripts/chunk-knowledge.js
 // Split knowledge base markdown files into chunks for embedding
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // File to tool mapping
 const FILE_TOOL_MAP = {
@@ -11,7 +15,8 @@ const FILE_TOOL_MAP = {
   'Cover-Letter-Generator-Pro-Knowledge-Base.md': 'cover-letter',
   'IG-Interview-Coach-Knowledge-Base.md': 'interview-coach',
   'Hidden-Job-Boards-Tool-Knowledge-Base.md': 'job-boards',
-  'IG-Insider-Briefs-Knowledge-Base.md': 'insider-briefs'
+  'IG-Insider-Briefs-Knowledge-Base.md': 'insider-briefs',
+  'IG-Career-Hub-Knowledge-Base.md': 'career-hub'
 };
 
 // Configuration
