@@ -429,6 +429,65 @@ async function retrieveInsiderBriefs(query, limit = 3) {
 }
 
 /**
+ * Helper function: Determine if query is about career advice (for blog search)
+ */
+function isCareerAdviceQuestion(message) {
+  const lowerMessage = message.toLowerCase();
+
+  // Skip for these patterns (greetings, tool help, goal tracking)
+  const skipPatterns = [
+    'hello', 'hi', 'hey there', 'thanks', 'thank you',
+    'show my goals', 'my goals', 'i applied', 'i\'ve applied',
+    'how does', 'what does this tool', 'how do i use'
+  ];
+
+  for (const pattern of skipPatterns) {
+    if (lowerMessage.includes(pattern)) {
+      return false;
+    }
+  }
+
+  // Search blogs for career advice questions
+  const careerPatterns = [
+    'how to', 'what is', 'what are', 'tips for', 'best practices',
+    'resume', 'cover letter', 'interview', 'salary', 'negotiate',
+    'networking', 'job search', 'career', 'application', 'linkedin',
+    'portfolio', 'references', 'follow up', 'offer', 'rejection'
+  ];
+
+  for (const pattern of careerPatterns) {
+    if (lowerMessage.includes(pattern)) {
+      return true;
+    }
+  }
+
+  // Default: search if question is substantial (8+ words)
+  return message.split(' ').length >= 8;
+}
+
+/**
+ * Helper function: Determine if query is about job market/trends (for insider briefs)
+ */
+function isMarketQuestion(message) {
+  const lowerMessage = message.toLowerCase();
+
+  const marketPatterns = [
+    'market', 'hiring', 'trends', 'current', 'right now', 'these days',
+    'job market', 'economy', 'employers', 'companies hiring',
+    'market condition', 'hiring freeze', 'layoff', 'demand',
+    'what\'s happening', 'industry trends', 'hot skills'
+  ];
+
+  for (const pattern of marketPatterns) {
+    if (lowerMessage.includes(pattern)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Helper function: Get time ago string
  */
 function getTimeAgoHelper(dateString) {
@@ -503,76 +562,107 @@ export const handler = async (event, context) => {
 
     console.log('📨 Received chat request');
 
-    // Initialize RAG-related variables
+    // Initialize result variables
     let ragResults = null;
     let ragContext = '';
     let citations = [];
     let retrievedChunks = 0;
+    let relevantArticles = [];
+    let insiderBriefContext = '';
+    let historyContext = '';
 
-    // Retrieve RAG context if available
+    // Determine which searches to run based on query type
+    const shouldSearchBlogs = isCareerAdviceQuestion(message);
+    const shouldSearchBriefs = isMarketQuestion(message);
+    const needsHistory = isReferencingHistory(message);
+
+    console.log(`🔍 Search strategy: RAG=always, Blogs=${shouldSearchBlogs}, Briefs=${shouldSearchBriefs}, History=${needsHistory}`);
+
+    // Build array of parallel searches
+    const searches = [];
+    const searchTypes = [];
+
+    // 1. RAG Knowledge Base (always run)
     if (ragRetriever) {
-      try {
-        console.log('Retrieving RAG context for query:', message);
-
-        // Map toolContext to tool name
-        const toolFilter = toolContext ? CONTEXT_TO_TOOL_MAP[toolContext] : null;
-
-        // Retrieve knowledge base and user context
-        ragResults = await ragRetriever.retrieve(message, {
+      const toolFilter = toolContext ? CONTEXT_TO_TOOL_MAP[toolContext] : null;
+      searches.push(
+        ragRetriever.retrieve(message, {
           tool: toolFilter,
           userId: userId || null,
           matchThreshold: 0.75,
           matchCount: 5
-        });
-
-        // Format context for Claude
-        ragContext = ragRetriever.formatContext(ragResults);
-
-        // Generate citations
-        citations = ragRetriever.generateCitations(ragResults);
-
-        retrievedChunks = ragResults.totalResults;
-
-        console.log(`Retrieved ${retrievedChunks} chunks from knowledge base`);
-      } catch (ragError) {
-        // Gracefully degrade if RAG fails
-        console.error('RAG retrieval failed, continuing without context:', ragError);
-        ragContext = '';
-        citations = [];
-        retrievedChunks = 0;
-      }
+        })
+      );
+      searchTypes.push('rag');
     }
 
-    // Search for relevant blog articles
-    const relevantArticles = await searchRelevantArticles(message, toolContext);
+    // 2. Blog Articles (conditional)
+    if (shouldSearchBlogs) {
+      searches.push(searchRelevantArticles(message, toolContext));
+      searchTypes.push('blogs');
+    }
 
-    // Check if user is referencing past conversations
-    const needsHistory = isReferencingHistory(message);
+    // 3. Insider Briefs (conditional)
+    if (shouldSearchBriefs) {
+      searches.push(retrieveInsiderBriefs(message, 3));
+      searchTypes.push('briefs');
+    }
 
-    // Retrieve relevant past conversations if needed
-    let historyContext = '';
+    // 4. History (conditional)
     if (needsHistory) {
-      try {
-        const pastMessages = await searchUserHistory(userId, message, 5);
-        if (pastMessages.length > 0) {
-          historyContext = formatHistoryForContext(pastMessages);
-          console.log(`📚 Retrieved ${pastMessages.length} relevant past messages for context`);
-        } else {
-          console.log('📚 User referenced history but no relevant past messages found');
-        }
-      } catch (error) {
-        console.error('Error retrieving history:', error);
-        // Continue without history if it fails
-      }
+      searches.push(searchUserHistory(userId, message, 5));
+      searchTypes.push('history');
     }
 
-    // NEW: Retrieve relevant insider briefs
-    let insiderBriefContext = '';
-    try {
-      insiderBriefContext = await retrieveInsiderBriefs(message, 3);
-    } catch (error) {
-      console.error('Error retrieving insider briefs (non-critical):', error);
-      // Continue without insider briefs if it fails
+    // Execute all searches in parallel
+    const startTime = Date.now();
+    const results = await Promise.allSettled(searches);
+    const searchDuration = Date.now() - startTime;
+    console.log(`⚡ Completed ${searches.length} searches in ${searchDuration}ms`);
+
+    // Process results with graceful degradation
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      const searchType = searchTypes[i];
+
+      if (result.status === 'fulfilled') {
+        switch (searchType) {
+          case 'rag':
+            ragResults = result.value;
+            if (ragResults) {
+              ragContext = ragRetriever.formatContext(ragResults);
+              citations = ragRetriever.generateCitations(ragResults);
+              retrievedChunks = ragResults.totalResults;
+              console.log(`✅ RAG: Retrieved ${retrievedChunks} chunks`);
+            }
+            break;
+
+          case 'blogs':
+            relevantArticles = result.value || [];
+            if (relevantArticles.length > 0) {
+              console.log(`✅ Blogs: Found ${relevantArticles.length} articles`);
+            }
+            break;
+
+          case 'briefs':
+            insiderBriefContext = result.value || '';
+            if (insiderBriefContext) {
+              console.log(`✅ Briefs: Retrieved insider brief context`);
+            }
+            break;
+
+          case 'history':
+            const pastMessages = result.value || [];
+            if (pastMessages.length > 0) {
+              historyContext = formatHistoryForContext(pastMessages);
+              console.log(`✅ History: Retrieved ${pastMessages.length} past messages`);
+            }
+            break;
+        }
+      } else {
+        console.error(`❌ ${searchType} search failed:`, result.reason);
+        // Continue with other searches - graceful degradation
+      }
     }
 
     // GOAL TRACKING: Check if user is setting a new goal
