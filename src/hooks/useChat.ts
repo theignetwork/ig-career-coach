@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Message, ChatResponse } from '../types/chat';
+import type { Message, ChatResponse, GoalCheckIn } from '../types/chat';
 
 // Helper function to determine if query is specific enough for sources
 function isSpecificQuestion(query: string): boolean {
@@ -84,6 +84,7 @@ export function useChat(toolContext: string | null) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [testimonialAsked, setTestimonialAsked] = useState(false);
   const [showTestimonialPrompt, setShowTestimonialPrompt] = useState(false);
+  const [goalCheckIn, setGoalCheckIn] = useState<GoalCheckIn | null>(null);
 
   // Load conversation from localStorage on mount
   useEffect(() => {
@@ -216,6 +217,11 @@ export function useChat(toolContext: string | null) {
       const data = await response.json();
       console.log('✅ API Success:', data);
 
+      // Handle goal check-in if present
+      if (data.goalCheckIn) {
+        setGoalCheckIn(data.goalCheckIn);
+      }
+
       const assistantMessage: Message = {
         role: 'assistant',
         content: data.response,
@@ -265,12 +271,19 @@ export function useChat(toolContext: string | null) {
     // If 'later', don't mark as asked - they might say yes next time
   };
 
+  // Function to dismiss goal check-in
+  const dismissGoalCheckIn = () => {
+    setGoalCheckIn(null);
+  };
+
   return {
     messages,
     isLoading,
     sendMessage,
     clearMessages,
     showTestimonialPrompt,
-    handleTestimonialResponse
+    handleTestimonialResponse,
+    goalCheckIn,
+    dismissGoalCheckIn
   };
 }

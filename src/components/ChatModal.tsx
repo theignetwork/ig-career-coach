@@ -5,6 +5,7 @@ import { WelcomeScreen } from './WelcomeScreen';
 import { Message } from './Message';
 import { TypingIndicator } from './TypingIndicator';
 import { TestimonialPrompt } from './TestimonialPrompt';
+import { GoalCheckInBanner } from './GoalCheckInBanner';
 
 interface ChatModalProps {
   toolContext: string | null;
@@ -18,7 +19,9 @@ export function ChatModal({ toolContext, onClose }: ChatModalProps) {
     sendMessage,
     clearMessages,
     showTestimonialPrompt,
-    handleTestimonialResponse
+    handleTestimonialResponse,
+    goalCheckIn,
+    dismissGoalCheckIn
   } = useChat(toolContext);
   const [input, setInput] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
@@ -111,6 +114,12 @@ export function ChatModal({ toolContext, onClose }: ChatModalProps) {
           <WelcomeScreen toolContext={toolContext} onTileClick={sendMessage} />
         ) : (
           <>
+            {/* Goal Check-In Banner (appears at top when present) */}
+            <GoalCheckInBanner
+              goalCheckIn={goalCheckIn}
+              onDismiss={dismissGoalCheckIn}
+            />
+
             {messages.map((msg, i) => (
               <Message key={i} {...msg} />
             ))}

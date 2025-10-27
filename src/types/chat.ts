@@ -11,10 +11,23 @@ export interface Source {
   url: string;
 }
 
+export interface GoalCheckIn {
+  message: string;
+  goal: {
+    id: string;
+    goalText: string;
+    targetNumber: number;
+    targetPeriod: string;
+    goalType: string;
+    currentProgress: number;
+  } | null;
+}
+
 export interface ChatResponse {
   response: string;
   conversationId: string;
   sources?: Source[];
+  goalCheckIn?: GoalCheckIn | null;
 }
 
 export interface ChatRequest {
