@@ -10,6 +10,7 @@
     "rag:chunk": "node scripts/chunk-knowledge.js",
     "rag:embed": "node scripts/generate-embeddings.js",
     "rag:test": "node scripts/test-rag.js",
+    "blog:cleanup": "node scripts/cleanup-duplicate-blog-posts.js",
     "preview": "vite preview"
   },
   "keywords": [

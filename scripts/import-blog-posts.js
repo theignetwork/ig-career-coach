@@ -161,7 +161,7 @@ async function processPost(post) {
       .from('blog_posts')
       .select('id')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       // Update existing post
