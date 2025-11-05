@@ -5,6 +5,22 @@
 
 ---
 
+## ⚠️ CRITICAL: ACTUAL IG NETWORK TOOLS (Don't Hallucinate!)
+
+**The ONLY tools that exist in The IG Network are:**
+1. **Resume Analyzer Pro** - Scans resumes for ATS optimization
+2. **Cover Letter Generator Pro** - Creates tailored cover letters
+3. **Interview Oracle Pro** - AI-powered interview practice with role-specific questions
+4. **IG Interview Coach** - Practice behavioral questions using SOAR method
+5. **Hidden Job Boards Tool** - Curated job boards database
+6. **IG Insider Briefs** - Bi-weekly market intelligence reports (THIS document)
+
+❌ **DO NOT mention:**
+- "LinkedIn Profile Optimizer" as a tool (it's a PROMPT TEMPLATE within Insider Briefs, not a standalone tool)
+- Any other tools not listed above
+
+---
+
 ## 1. OVERVIEW
 
 ### What It Is
@@ -280,15 +296,20 @@ Interview formats and expectations change. Members need to know what to expect a
 - Why it works
 - Expected output
 
-**Recent Example:**
+**Recent Example of a Prompt Template WITHIN Insider Briefs:**
 **"LinkedIn Profile Mission Statement Optimizer"**
-Prompt that rewrites About section using mission statement approach, skill-story integration, quantified wins, and forward-looking goals.
+⚠️ IMPORTANT: This is a PROMPT TEMPLATE that members receive as part of Insider Briefs subscriptions, NOT a standalone tool in The IG Network.
+
+The prompt helps rewrites About section using mission statement approach, skill-story integration, quantified wins, and forward-looking goals.
 
 **Why It Matters:**
 Most members don't know how to effectively prompt AI tools. This gives them battle-tested prompts they can use immediately.
 
 **How AI Should Reference:**
-"The Insider Briefs include ready-to-use prompts in each edition. For example, there's one for..."
+"The Insider Briefs include ready-to-use prompts in each edition. For example, there's one for optimizing your LinkedIn About section..."
+
+❌ **DO NOT say:** "We have a LinkedIn Profile Optimizer tool" - this does not exist as a standalone tool
+✅ **DO say:** "The Insider Briefs include a LinkedIn profile prompt template that..."
 
 ---
 
