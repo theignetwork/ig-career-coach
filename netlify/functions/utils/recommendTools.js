@@ -46,6 +46,13 @@ const TOOL_CATALOG = {
     description: 'Get insider insights on salaries, companies, and industry trends',
     url: '/tools/insider-briefs',
     category: 'research'
+  },
+  'career-hub': {
+    name: 'IG Career Hub',
+    keywords: ['dashboard', 'all tools', 'career hub', 'hub', 'overview', 'what tools', 'show me tools'],
+    description: 'Your central dashboard to access all IG Network tools and resources',
+    url: '/hq',
+    category: 'navigation'
   }
 };
 

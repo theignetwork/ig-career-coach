@@ -13,7 +13,8 @@
 3. **Interview Oracle Pro** - AI-powered interview practice with role-specific questions
 4. **IG Interview Coach** - Practice behavioral questions using SOAR method
 5. **Hidden Job Boards Tool** - Curated job boards database
-6. **IG Insider Briefs** - Bi-weekly market intelligence reports (THIS document)
+6. **IG Career Hub** - Central dashboard for all IG Network tools and resources
+7. **IG Insider Briefs** - Bi-weekly market intelligence reports (THIS document)
 
 ❌ **DO NOT mention:**
 - "LinkedIn Profile Optimizer" as a tool (it's a PROMPT TEMPLATE within Insider Briefs, not a standalone tool)
