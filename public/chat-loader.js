@@ -155,9 +155,21 @@
         console.log('WordPress REST API error:', e.message);
       }
 
-      console.warn('⚠️ Could not find WordPress user ID - user will be anonymous');
-      console.warn('📋 Please check the console logs above to see what WordPress variables are available');
-      return null;
+      // Fall back to localStorage UUID (same as Career Hub)
+      console.warn('⚠️ Could not find WordPress user ID - generating anonymous UUID');
+
+      const storageKey = 'ig_user_id';
+      let userId = localStorage.getItem(storageKey);
+
+      if (!userId) {
+        userId = crypto.randomUUID();
+        localStorage.setItem(storageKey, userId);
+        console.log('✓ Generated new anonymous user ID:', userId);
+      } else {
+        console.log('✓ Using existing anonymous user ID:', userId);
+      }
+
+      return userId;
     } catch (error) {
       console.error('Error getting WordPress user ID:', error);
       return null;
