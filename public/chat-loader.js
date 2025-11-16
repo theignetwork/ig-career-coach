@@ -74,6 +74,28 @@
   // Function to get WordPress user ID
   async function getWordPressUserId() {
     try {
+      // DEBUG: Log all window properties that might contain user data
+      console.log('🔍 DEBUG: Searching for WordPress user data...');
+      console.log('window.mepr_user:', window.mepr_user);
+      console.log('window.current_user_id:', window.current_user_id);
+      console.log('window.wpUserData:', window.wpUserData);
+      console.log('window.wp:', window.wp);
+      console.log('window.wpApiSettings:', window.wpApiSettings);
+      console.log('window.mepr:', window.mepr);
+      console.log('window.memberpress:', window.memberpress);
+
+      // Search for any window property containing "user", "mepr", or "member"
+      const relevantProps = Object.keys(window).filter(key =>
+        key.toLowerCase().includes('user') ||
+        key.toLowerCase().includes('mepr') ||
+        key.toLowerCase().includes('member') ||
+        key.toLowerCase().includes('wp')
+      );
+      console.log('🔍 Found window properties:', relevantProps);
+      relevantProps.forEach(prop => {
+        console.log(`  ${prop}:`, window[prop]);
+      });
+
       // Method 1: Check for MemberPress global variable
       if (window.mepr_user && window.mepr_user.id) {
         console.log('✓ Found user ID from mepr_user:', window.mepr_user.id);
@@ -92,21 +114,34 @@
         return window.wpUserData.id;
       }
 
-      // Method 4: Try WordPress REST API
+      // Method 4: Check wpApiSettings nonce (indicates logged in user)
+      if (window.wpApiSettings && window.wpApiSettings.nonce) {
+        console.log('✓ Found WordPress nonce (user is logged in)');
+        // Try to extract user ID from wpApiSettings
+        if (window.wpApiSettings.userId) {
+          console.log('✓ Found user ID from wpApiSettings.userId:', window.wpApiSettings.userId);
+          return window.wpApiSettings.userId;
+        }
+      }
+
+      // Method 5: Try WordPress REST API
       try {
         const response = await fetch('/wp-json/wp/v2/users/me');
+        console.log('WordPress REST API response status:', response.status);
         if (response.ok) {
           const userData = await response.json();
+          console.log('WordPress REST API userData:', userData);
           if (userData.id) {
             console.log('✓ Found user ID from WordPress REST API:', userData.id);
             return userData.id;
           }
         }
       } catch (e) {
-        console.log('WordPress REST API not available:', e.message);
+        console.log('WordPress REST API error:', e.message);
       }
 
       console.warn('⚠️ Could not find WordPress user ID - user will be anonymous');
+      console.warn('📋 Please check the console logs above to see what WordPress variables are available');
       return null;
     } catch (error) {
       console.error('Error getting WordPress user ID:', error);
