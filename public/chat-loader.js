@@ -78,31 +78,37 @@
       console.log('🔍 DEBUG: Checking njt_wp_data:', window.njt_wp_data);
       console.log('🔍 DEBUG: Checking wpUserFirstName:', window.wpUserFirstName);
 
-      // Method 1: Check for MemberPress global variable
+      // Method 1: Check for wpUserId (from our PHP snippet)
+      if (window.wpUserId) {
+        console.log('✓ Found user ID from wpUserId:', window.wpUserId);
+        return String(window.wpUserId);
+      }
+
+      // Method 2: Check for MemberPress global variable
       if (window.mepr_user && window.mepr_user.id) {
         console.log('✓ Found user ID from mepr_user:', window.mepr_user.id);
         return window.mepr_user.id;
       }
 
-      // Method 2: Check for WordPress user ID variable
+      // Method 3: Check for WordPress user ID variable
       if (window.current_user_id) {
         console.log('✓ Found user ID from current_user_id:', window.current_user_id);
         return window.current_user_id;
       }
 
-      // Method 3: Check for WordPress global user object
+      // Method 4: Check for WordPress global user object
       if (window.wpUserData && window.wpUserData.id) {
         console.log('✓ Found user ID from wpUserData:', window.wpUserData.id);
         return window.wpUserData.id;
       }
 
-      // Method 4: Check njt_wp_data (Ninja Tables or other plugin data)
+      // Method 5: Check njt_wp_data (Ninja Tables or other plugin data)
       if (window.njt_wp_data && window.njt_wp_data.user_id) {
         console.log('✓ Found user ID from njt_wp_data.user_id:', window.njt_wp_data.user_id);
         return window.njt_wp_data.user_id;
       }
 
-      // Method 5: Check wpApiSettings nonce (indicates logged in user)
+      // Method 6: Check wpApiSettings nonce (indicates logged in user)
       if (window.wpApiSettings && window.wpApiSettings.nonce) {
         console.log('✓ Found WordPress nonce (user is logged in)');
         // Try to extract user ID from wpApiSettings
@@ -112,7 +118,7 @@
         }
       }
 
-      // Method 6: Use admin-ajax.php to get current user
+      // Method 7: Use admin-ajax.php to get current user
       if (window.njt_wp_data && window.njt_wp_data.admin_ajax) {
         try {
           const formData = new FormData();
@@ -133,7 +139,7 @@
         }
       }
 
-      // Method 7: Try WordPress REST API
+      // Method 8: Try WordPress REST API
       try {
         const response = await fetch('/wp-json/wp/v2/users/me');
         console.log('WordPress REST API response status:', response.status);
