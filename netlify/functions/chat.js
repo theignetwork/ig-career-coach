@@ -523,7 +523,7 @@ export const handler = async (event, context) => {
   // CORS headers - allow requests from members site
   const headers = {
     'Access-Control-Allow-Origin': 'https://members.theinterviewguys.com',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, x-user-id',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'
   };
