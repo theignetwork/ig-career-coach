@@ -32,6 +32,7 @@ export const handler = async (event, context) => {
 
   try {
     const sessionId = event.queryStringParameters?.sessionId;
+    const userId = event.headers['x-user-id'] || event.queryStringParameters?.userId || 'anonymous';
 
     if (!sessionId) {
       return {
@@ -59,6 +60,19 @@ export const handler = async (event, context) => {
           'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({ error: 'Conversation not found' })
+      };
+    }
+
+    // SECURITY: Verify ownership - conversation must belong to current user
+    if (conversation.user_id !== userId) {
+      console.error('🚨 SECURITY: User', userId, 'attempted to access conversation history', sessionId, 'owned by', conversation.user_id);
+      return {
+        statusCode: 403,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ error: 'Access denied: This conversation belongs to another user' })
       };
     }
 

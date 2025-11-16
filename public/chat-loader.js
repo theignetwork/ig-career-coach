@@ -71,11 +71,65 @@
     }
   }
 
+  // Function to get WordPress user ID
+  async function getWordPressUserId() {
+    try {
+      // Method 1: Check for MemberPress global variable
+      if (window.mepr_user && window.mepr_user.id) {
+        console.log('✓ Found user ID from mepr_user:', window.mepr_user.id);
+        return window.mepr_user.id;
+      }
+
+      // Method 2: Check for WordPress user ID variable
+      if (window.current_user_id) {
+        console.log('✓ Found user ID from current_user_id:', window.current_user_id);
+        return window.current_user_id;
+      }
+
+      // Method 3: Check for WordPress global user object
+      if (window.wpUserData && window.wpUserData.id) {
+        console.log('✓ Found user ID from wpUserData:', window.wpUserData.id);
+        return window.wpUserData.id;
+      }
+
+      // Method 4: Try WordPress REST API
+      try {
+        const response = await fetch('/wp-json/wp/v2/users/me');
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData.id) {
+            console.log('✓ Found user ID from WordPress REST API:', userData.id);
+            return userData.id;
+          }
+        }
+      } catch (e) {
+        console.log('WordPress REST API not available:', e.message);
+      }
+
+      console.warn('⚠️ Could not find WordPress user ID - user will be anonymous');
+      return null;
+    } catch (error) {
+      console.error('Error getting WordPress user ID:', error);
+      return null;
+    }
+  }
+
+  // Initialize and load chat
+  async function initializeChat() {
+    const userId = await getWordPressUserId();
+
+    // Store user ID globally for the app to access
+    window.__IG_CAREER_COACH_USER_ID__ = userId;
+
+    // Load the chat app
+    await loadChat();
+  }
+
   // Load when DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadChat);
+    document.addEventListener('DOMContentLoaded', initializeChat);
   } else {
-    loadChat();
+    initializeChat();
   }
 
 })();

@@ -192,13 +192,20 @@ export function useChat(toolContext: string | null) {
     try {
       console.log('📤 Sending message to API:', { content, conversationId, toolContext });
 
+      // Get WordPress user ID from window (set by chat-loader.js)
+      const userId = (window as any).__IG_CAREER_COACH_USER_ID__ || null;
+
       const response = await fetch('https://ig-career-coach.netlify.app/.netlify/functions/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': userId || 'anonymous', // Send user ID in header
+        },
         body: JSON.stringify({
           message: content,
           conversationId,
-          toolContext
+          toolContext,
+          userId // Also send in body for redundancy
         })
       });
 

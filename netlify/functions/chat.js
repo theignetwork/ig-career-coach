@@ -763,7 +763,33 @@ export const handler = async (event, context) => {
     let conversationHistory = [];
 
     if (sessionId) {
-      // Load existing conversation
+      // SECURITY: First verify the conversation belongs to this user
+      const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .select('id, user_id')
+        .eq('id', sessionId)
+        .single();
+
+      if (convError || !conversation) {
+        console.error('❌ Conversation not found:', sessionId);
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ error: 'Conversation not found' })
+        };
+      }
+
+      // SECURITY: Verify ownership - conversation must belong to current user
+      if (conversation.user_id !== userId) {
+        console.error('🚨 SECURITY: User', userId, 'attempted to access conversation', sessionId, 'owned by', conversation.user_id);
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ error: 'Access denied: This conversation belongs to another user' })
+        };
+      }
+
+      // Load existing conversation (now verified to belong to this user)
       const { data: messages, error: loadError } = await supabase
         .from('messages')
         .select('role, message')
