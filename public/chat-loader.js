@@ -5,6 +5,8 @@
  * from the host site. Add this to any page to embed the chat:
  *
  * <script src="https://ig-career-coach.netlify.app/chat-loader.js"></script>
+ *
+ * Authentication is handled via JWT tokens from WordPress - no client-side user ID needed.
  */
 
 (function() {
@@ -65,133 +67,18 @@
       document.body.appendChild(script);
 
       console.log('✅ IG Career Coach loaded successfully');
+      console.log('ℹ️  Authentication handled via JWT from WordPress');
 
     } catch (error) {
       console.error('❌ Failed to load IG Career Coach:', error);
     }
   }
 
-  // Function to get WordPress user ID
-  async function getWordPressUserId() {
-    try {
-      // DEBUG: Log WordPress data
-      console.log('🔍 DEBUG: Checking njt_wp_data:', window.njt_wp_data);
-      console.log('🔍 DEBUG: Checking wpUserFirstName:', window.wpUserFirstName);
-
-      // Method 1: Check for wpUserId (from our PHP snippet)
-      if (window.wpUserId) {
-        console.log('✓ Found user ID from wpUserId:', window.wpUserId);
-        return String(window.wpUserId);
-      }
-
-      // Method 2: Check for MemberPress global variable
-      if (window.mepr_user && window.mepr_user.id) {
-        console.log('✓ Found user ID from mepr_user:', window.mepr_user.id);
-        return window.mepr_user.id;
-      }
-
-      // Method 3: Check for WordPress user ID variable
-      if (window.current_user_id) {
-        console.log('✓ Found user ID from current_user_id:', window.current_user_id);
-        return window.current_user_id;
-      }
-
-      // Method 4: Check for WordPress global user object
-      if (window.wpUserData && window.wpUserData.id) {
-        console.log('✓ Found user ID from wpUserData:', window.wpUserData.id);
-        return window.wpUserData.id;
-      }
-
-      // Method 5: Check njt_wp_data (Ninja Tables or other plugin data)
-      if (window.njt_wp_data && window.njt_wp_data.user_id) {
-        console.log('✓ Found user ID from njt_wp_data.user_id:', window.njt_wp_data.user_id);
-        return window.njt_wp_data.user_id;
-      }
-
-      // Method 6: Check wpApiSettings nonce (indicates logged in user)
-      if (window.wpApiSettings && window.wpApiSettings.nonce) {
-        console.log('✓ Found WordPress nonce (user is logged in)');
-        // Try to extract user ID from wpApiSettings
-        if (window.wpApiSettings.userId) {
-          console.log('✓ Found user ID from wpApiSettings.userId:', window.wpApiSettings.userId);
-          return window.wpApiSettings.userId;
-        }
-      }
-
-      // Method 7: Use admin-ajax.php to get current user
-      if (window.njt_wp_data && window.njt_wp_data.admin_ajax) {
-        try {
-          const formData = new FormData();
-          formData.append('action', 'get_current_user_id');
-          const response = await fetch(window.njt_wp_data.admin_ajax, {
-            method: 'POST',
-            body: formData
-          });
-          if (response.ok) {
-            const data = await response.json();
-            if (data.user_id) {
-              console.log('✓ Found user ID from admin-ajax:', data.user_id);
-              return data.user_id;
-            }
-          }
-        } catch (e) {
-          console.log('admin-ajax method failed:', e.message);
-        }
-      }
-
-      // Method 8: Try WordPress REST API
-      try {
-        const response = await fetch('/wp-json/wp/v2/users/me');
-        console.log('WordPress REST API response status:', response.status);
-        if (response.ok) {
-          const userData = await response.json();
-          console.log('WordPress REST API userData:', userData);
-          if (userData.id) {
-            console.log('✓ Found user ID from WordPress REST API:', userData.id);
-            return userData.id;
-          }
-        }
-      } catch (e) {
-        console.log('WordPress REST API error:', e.message);
-      }
-
-      // Fall back to localStorage UUID (same as Career Hub)
-      console.warn('⚠️ Could not find WordPress user ID - generating anonymous UUID');
-
-      const storageKey = 'ig_user_id';
-      let userId = localStorage.getItem(storageKey);
-
-      if (!userId) {
-        userId = crypto.randomUUID();
-        localStorage.setItem(storageKey, userId);
-        console.log('✓ Generated new anonymous user ID:', userId);
-      } else {
-        console.log('✓ Using existing anonymous user ID:', userId);
-      }
-
-      return userId;
-    } catch (error) {
-      console.error('Error getting WordPress user ID:', error);
-      return null;
-    }
-  }
-
-  // Initialize and load chat
-  async function initializeChat() {
-    const userId = await getWordPressUserId();
-
-    // Store user ID globally for the app to access
-    window.__IG_CAREER_COACH_USER_ID__ = userId;
-
-    // Load the chat app
-    await loadChat();
-  }
-
   // Load when DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeChat);
+    document.addEventListener('DOMContentLoaded', loadChat);
   } else {
-    initializeChat();
+    loadChat();
   }
 
 })();
