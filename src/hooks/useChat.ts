@@ -192,20 +192,24 @@ export function useChat(toolContext: string | null) {
     try {
       console.log('📤 Sending message to API:', { content, conversationId, toolContext });
 
-      // Get WordPress user ID from window (set by chat-loader.js)
-      const userId = (window as any).__IG_CAREER_COACH_USER_ID__ || null;
+      // Get WordPress JWT token from window (set by chat-loader.js)
+      const authToken = (window as any).__IG_CAREER_COACH_JWT__ || sessionStorage.getItem('auth_token');
+
+      if (!authToken) {
+        console.error('[useChat] No auth token available');
+        throw new Error('Authentication required - Please log in through WordPress');
+      }
 
       const response = await fetch('https://ig-career-coach.netlify.app/.netlify/functions/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': userId || 'anonymous', // Send user ID in header
+          'Authorization': `Bearer ${authToken}`,  // ✅ Send JWT in Authorization header
         },
         body: JSON.stringify({
           message: content,
           conversationId,
-          toolContext,
-          userId // Also send in body for redundancy
+          toolContext
         })
       });
 

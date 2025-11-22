@@ -2,6 +2,7 @@
 // Load conversation history
 
 import { createClient } from '@supabase/supabase-js';
+import { getUserFromRequest } from './lib/auth.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -29,12 +30,25 @@ export const handler = async (event, context) => {
       body: JSON.stringify({ error: 'Method not allowed' })
     };
   }
-
   try {
-    const sessionId = event.queryStringParameters?.sessionId;
-    const userId = event.headers['x-user-id'] || event.queryStringParameters?.userId || 'anonymous';
+    // ✅ SECURE: Verify JWT and extract user ID
+    const user = await getUserFromRequest(event);
 
+    if (!user) {
+      return {
+        statusCode: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ error: 'Unauthorized - Please log in through WordPress' })
+      };
+    }
+
+    const userId = user.user_id;  // From VERIFIED token
+    const sessionId = event.queryStringParameters?.sessionId;
     if (!sessionId) {
+
       return {
         statusCode: 400,
         headers: {

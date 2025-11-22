@@ -22,6 +22,7 @@ import {
   formatProgressCelebration,
   formatGoalConfirmation
 } from './utils/goalTracking.js';
+import { getUserFromRequest } from './lib/auth.js';
 
 // Initialize clients
 const anthropic = new Anthropic({
@@ -547,10 +548,21 @@ export const handler = async (event, context) => {
   }
 
   try {
-    const { message, sessionId, context: toolContext, userId: bodyUserId } = JSON.parse(event.body);
+    // ✅ SECURE: Verify JWT and extract user ID
+    const user = await getUserFromRequest(event);
 
-    // Get userId from headers (x-user-id) or body, default to 'anonymous'
-    const userId = event.headers['x-user-id'] || bodyUserId || 'anonymous';
+    if (!user) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Unauthorized - Please log in through WordPress' })
+      };
+    }
+
+    const userId = user.user_id;  // From VERIFIED token
+    console.log(`[chat] Authenticated request from WordPress user ${userId}`);
+
+    const { message, sessionId, context: toolContext } = JSON.parse(event.body);
 
     if (!message) {
       return {
