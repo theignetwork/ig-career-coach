@@ -24,7 +24,54 @@
   // Cache-busting timestamp
   const cacheBuster = Date.now();
 
+  /**
+   * Extract JWT token from WordPress
+   * WordPress passes JWT via URL parameter: ?context=<JWT>
+   */
+  function getWordPressJWT() {
+    // Check URL parameter first (from WordPress redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    const contextParam = urlParams.get('context');
+
+    if (contextParam) {
+      console.log('✓ Found JWT token in URL parameter');
+      // Store in sessionStorage for persistence
+      sessionStorage.setItem('auth_token', contextParam);
+      // Store globally for immediate use
+      window.__IG_CAREER_COACH_JWT__ = contextParam;
+      return contextParam;
+    }
+
+    // Check sessionStorage (from previous page load)
+    const storedToken = sessionStorage.getItem('auth_token');
+    if (storedToken) {
+      console.log('✓ Found JWT token in sessionStorage');
+      window.__IG_CAREER_COACH_JWT__ = storedToken;
+      return storedToken;
+    }
+
+    // Check if parent window has token (for iframe embeds)
+    try {
+      if (window.parent && window.parent !== window) {
+        const parentToken = window.parent.__IG_CAREER_COACH_JWT__;
+        if (parentToken) {
+          console.log('✓ Found JWT token from parent window');
+          sessionStorage.setItem('auth_token', parentToken);
+          window.__IG_CAREER_COACH_JWT__ = parentToken;
+          return parentToken;
+        }
+      }
+    } catch (e) {
+      // Cross-origin parent, can't access
+    }
+
+    console.warn('⚠️ No JWT token found - user may not be authenticated');
+    return null;
+  }
+
   async function loadChat() {
+    // Extract and store JWT before loading the app
+    getWordPressJWT();
     try {
       console.log('🚀 Loading IG Career Coach...');
 

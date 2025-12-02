@@ -441,7 +441,7 @@ Update `package.json`:
 
 Add to Netlify:
 ```env
-JWT_SECRET=41d7608f24c106eeab002add62ea7b614173a6a6e9a95eaee7505936d8c51edc
+JWT_SECRET=ea028b3abe0fbb157ac3b12e1247666bb46febd1b17dbd5001253d43289bb9db
 ```
 
 (Same JWT_SECRET used by other IG Network tools)
